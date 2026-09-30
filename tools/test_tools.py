@@ -24,6 +24,14 @@ with tempfile.TemporaryDirectory() as tmp:
         except auth.Failure: pass
         else: raise AssertionError('template accepted as secret destination')
         authorize.assert_not_called()
+    tracked=Path(__file__).resolve().parents[1]/'sim/shims/secrets.h'
+    with patch('sys.argv',['authorize-calendar.py','--client',str(client),'--secrets',str(tracked),'--account','user@example.com']),patch.object(auth,'authorize') as authorize:
+        try: auth.main()
+        except auth.Failure: pass
+        else: raise AssertionError('tracked public simulator header accepted')
+        authorize.assert_not_called()
+    private=Path(tmp,'secrets.h');private.write_text('#pragma once\n')
+    auth.validate_destination(private)
 flash=load('flash')
 with tempfile.TemporaryDirectory() as tmp:
     Path(tmp,'flasher_args.json').write_text(json.dumps({'extra_esptool_args':{'chip':'esp32'}}))

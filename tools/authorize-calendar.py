@@ -10,6 +10,7 @@ from pathlib import Path
 import re
 import secrets
 import shlex
+import subprocess
 import sys
 import time
 import urllib.error
@@ -62,6 +63,21 @@ def self_test():
     assert update_header(got, {'GCAL_CAL_ID': 'primary', 'GCAL_REFRESH_TOKEN': 'synthetic"value'}) == got
     print('PASS authorization header update')
 
+def validate_destination(path):
+    if path.name != 'secrets.h' or path.is_symlink() or not path.is_file():
+        raise Failure('destination must be an existing regular secrets.h file, not a template or symlink', 'copy the board template to an ignored local secrets.h')
+    resolved = path.resolve()
+    repo = Path(__file__).resolve().parents[1]
+    if resolved == repo / 'sim/shims/secrets.h':
+        raise Failure('the simulator header is public source, not a credential destination', 'use boards/esp32-s3-knob/main/secrets.h')
+    git_root = next((p for p in resolved.parents if (p / '.git').exists()), None)
+    if git_root is not None:
+        relative = str(resolved.relative_to(git_root))
+        tracked = subprocess.run(['git', '-C', str(git_root), 'ls-files', '--error-unmatch', '--', relative], capture_output=True).returncode
+        ignored = subprocess.run(['git', '-C', str(git_root), 'check-ignore', '-q', '--', relative], capture_output=True).returncode
+        if tracked != 1 or ignored != 0:
+            raise Failure('credential destination must be untracked and ignored by Git', 'choose an ignored secrets.h or a private path outside a Git checkout')
+
 def main():
     ap=argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--client', type=Path, required=True, help='Google Desktop OAuth client JSON')
@@ -76,8 +92,7 @@ def main():
         c['client_id'],c['client_secret']
     except (OSError,ValueError,KeyError,TypeError):
         raise Failure('client JSON missing or not a Google Desktop OAuth client',f'save the Desktop client JSON to {shlex.quote(str(args.client))}, then {rerun}')
-    if args.secrets.name != 'secrets.h' or args.secrets.is_symlink() or not args.secrets.is_file():
-        raise Failure('destination must be an existing regular secrets.h file, not a template or symlink',f'copy boards/esp32-s3-knob/main/secrets.h.example to a local secrets.h, then {rerun}')
+    validate_destination(args.secrets)
     try:authorize(args,c,rerun)
     except urllib.error.HTTPError as exc:
         code=oauth_error(exc)
