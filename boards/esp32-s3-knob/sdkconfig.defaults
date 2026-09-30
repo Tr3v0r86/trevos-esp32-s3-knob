@@ -1,0 +1,42 @@
+# Target + flash. 16MB per the spec sheet; quad (qio), as the disk.
+CONFIG_IDF_TARGET="esp32s3"
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="16MB"
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# Rollback-ready table (A5): a fresh image boots "pending verify" and the bootloader rolls back
+# to the previous slot on the next reset unless the app marked itself healthy. v5.4's Kconfig only
+# has the BOOTLOADER_ prefixed name; CONFIG_APP_ROLLBACK_ENABLE is a pre-rename alias.
+CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
+
+# Native USB-Serial/JTAG is the only console: we reach the board over USB-C.
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_FREERTOS_HZ=1000
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+
+# PSRAM. Octal 80MHz is ASSUMED for the JC3636K518 S3 module (mode UNVERIFIED; some S3 variants
+# are QUAD). If SPIRAM init fails at boot, flip CONFIG_SPIRAM_MODE_OCT to CONFIG_SPIRAM_MODE_QUAD
+# and reflash.
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_SPEED_80M=y
+CONFIG_SPIRAM_USE_MALLOC=y
+
+# LVGL from the real heap (8MB PSRAM), snapshot for trevos_shot.
+CONFIG_LV_USE_CLIB_MALLOC=y
+CONFIG_LV_USE_SNAPSHOT=y
+
+# .bss in PSRAM: POMO_DESC_LEN=480 puts the four static task lists at 85 KB of internal DRAM,
+# which ran out on the disk (httpd_start and mbedtls_ssl_setup both failed). The tagged
+# EXT_RAM_BSS_ATTR statics move to SPIRAM with this on.
+CONFIG_SPIRAM_ALLOW_BSS_SEG_EXTERNAL_MEMORY=y
+
+# E11: Wi-Fi + TLS pressure on internal RAM. Small allocations (<= 16 KB) stay internal so DMA and
+# the stacks keep their headroom; Wi-Fi and lwIP buffers are allowed to land in SPIRAM.
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=16384
+CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y

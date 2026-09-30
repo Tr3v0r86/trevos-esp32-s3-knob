@@ -1,0 +1,21 @@
+# Name,     Type, SubType, Offset,    Size
+# 16MB flash (spec sheet). Two OTA app slots plus otadata, the disk's shape (A5): rollback needs a
+# slot to fall back TO. There is no audio blob on the puck (the S3 owns no audio path), so the
+# space the disk gives it is left free after `cache`.
+nvs,        data, nvs,     0x9000,    0x6000
+otadata,    data, ota,     0xf000,    0x2000
+phy_init,   data, phy,     0x11000,   0x1000
+ota_0,      app,  ota_0,   0x20000,   0x3F0000
+ota_1,      app,  ota_1,   0x410000,  0x3F0000
+# Task-list and calendar cache, its own 1MB NVS partition (POMO_CACHE_PARTITION and
+# CAL_CACHE_PARTITION are both "cache"). The main `nvs` is 24KB and cannot hold the 480-char
+# task list. The outbox deliberately stays in the main `nvs`.
+cache,      data, nvs,     0x800000,  0x100000
+# Arithmetic, so the next edit can check it without a calculator:
+#   nvs      0x9000   + 0x6000   = 0xF000  (otadata starts here)
+#   otadata  0xF000   + 0x2000   = 0x11000 (phy_init starts here)
+#   phy_init 0x11000  + 0x1000   = 0x12000 (ota_0 aligned up to 0x20000, 64KB app alignment)
+#   ota_0    0x20000  + 0x3F0000 = 0x410000 (ota_1 starts here)
+#   ota_1    0x410000 + 0x3F0000 = 0x800000 (cache starts here)
+#   cache    0x800000 + 0x100000 = 0x900000 = 9MB, well inside the 16MB (0x1000000) flash.
+# CHANGING THIS TABLE NEEDS A USB FLASH (idf.py -p PORT flash), not an OTA push.

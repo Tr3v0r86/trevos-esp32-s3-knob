@@ -1,0 +1,12 @@
+dependencies:
+  idf: ">=5.4"
+  # First-party QSPI driver for the ST77916, same version the disk and padlano-puck use.
+  espressif/esp_lcd_st77916: "~2.0.2"
+  # Capacitive touch; resets the controller and verifies the chip ID at 0xA7 on create.
+  espressif/esp_lcd_touch_cst816s: "^1.1"
+  # LVGL glue for the shared TrevOS shell. The sim and the other boards render with
+  # esp_lvgl_port 2.8.0; the puck must run the library the sim gated (C11: the sim is the gate before every flash).
+  espressif/esp_lvgl_port: "~2.8.0"
+  # Exact pin, same reason: the sim and the other boards render with lvgl 9.5.0.
+  # A bare version is == to the IDF component manager; a floating range picked up 9.6.0.
+  lvgl/lvgl: "9.5.0"
