@@ -37,6 +37,10 @@ Pomodoist operates independently from Cal. Calendar events do not shorten or pre
 
 These are actual simulator renders with invented content, not photographs of a device.
 
+![Wheel navigation in the LVGL simulator with synthetic data](design/media/trevos-wheel-simulator.gif)
+
+Wheel navigation, captured in the LVGL simulator with synthetic data. This is not hardware footage.
+
 The first release retains the calendar model's **Asia/Bangkok / UTC+7 assumption**. It does not claim global timezone or daylight-saving support. Wi-Fi and integration credentials are configured at build time, not through a captive portal. Battery percentage and audio co-processor support are not part of this release.
 
 ## Build, preview and reuse

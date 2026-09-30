@@ -39,6 +39,18 @@ SIM_DISP=null SIM_TICKS=600 SIM_SHOT=/tmp/trevos-focus.ppm sim/build/pucksim </d
 
 The PPM is the real LVGL render. On macOS convert with `sips -s format png /tmp/trevos-focus.ppm --out /tmp/trevos-focus.png`. Other image tools can read PPM directly. To capture Settings, build the launcher preset and pipe `WAIT 400`, two `TURN +1` lines, `WAIT 400`, then `TAP 180 180` to the simulator. Give scripted captures enough ticks to process waits and settle.
 
+For a reproducible wheel-navigation clip, build the synthetic launcher preset and sample its actual LVGL tween frames. The output directory must not exist yet. FFmpeg is optional and needed only for encoding the frames into video/GIF.
+
+```sh
+cmake -S sim -B sim/build -DSIM_TEST_FLAGS='-DTT_DEV_DEMO=1 -DTT_DEV_VIEW=12 -DTT_DEV_CAL_NOW=560'
+cmake --build sim/build -j
+python3 tools/render-wheel.py --sim sim/build/pucksim --output dist/wheel
+ffmpeg -framerate 25 -i dist/wheel/frames/%04d.ppm -c:v libx264 -pix_fmt yuv420p -movflags +faststart dist/wheel/trevos-wheel-simulator.mp4
+ffmpeg -framerate 25 -i dist/wheel/frames/%04d.ppm -filter_complex '[0:v]split[a][b];[a]palettegen[p];[b][p]paletteuse=dither=bayer' -loop 0 dist/wheel/trevos-wheel-simulator.gif
+```
+
+The 5.32-second sequence samples three real `TURN +1` animations at 40ms intervals, with readable holds between them. Assertions verify each capture's 360×360 format and requested elapsed time; logs remain beside the frames. No pixels are interpolated. Label it **“Wheel navigation, captured in the LVGL simulator with synthetic data.”** It is not hardware footage or a hardware frame-rate measurement.
+
 ## Limits and checks
 
 The simulated panel is square: the physical glass is round, so corners outside its circle are invisible on hardware. Simulator captures do not prove display wiring, color order, touch orientation, hardware haptics, radio reliability, memory endurance or recovery. Mark them **simulator captures**, never device photographs.

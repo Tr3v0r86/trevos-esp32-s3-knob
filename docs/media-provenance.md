@@ -6,6 +6,8 @@ Prepared 2026-10-01. Public images contain synthetic content. There are **no ver
 
 `design/screens/{focus,picker,break,cal,cal-next,home,settings}.png` are 360 × 360 PNGs produced by the public source's LVGL simulator with invented task and event fixtures. The original renderer output is PPM, converted losslessly to PNG. They represent actual UI rendering, not an artist's redrawing. Their displayed dates/times are fixture/runtime values, not evidence of a live account connection. Use the [simulator instructions](../sim/README.md) to reproduce the faces.
 
+`design/media/trevos-wheel-simulator.mp4` and `.gif` show wheel navigation through Pomodoist, Cal and Settings. The 360 × 360, 25 fps, 5.32-second sequence uses actual LVGL-rendered states sampled at fixed times after synthetic `TURN +1` inputs, with readable holds. The clock is pinned to 09:20; no account or device is connected. Frames are not interpolated or redrawn. This is a sampled simulator demonstration, not physical wheel footage or a hardware frame-rate measurement. Reproduce it with `tools/render-wheel.py` and the encoding commands in [simulator instructions](../sim/README.md). Preserve the simulator caption when reusing it.
+
 ## Product and desk concepts
 
 `design/media/trevos-product-concept.png`, `trevos-desk-morning-concept.png` and `trevos-desk-evening-concept.png` were generated with Codex's built-in image-generation tool. They are **AI-generated illustrative concepts**, not product photographs, CAD validation or proof of manufactured finishes. Scale, surface material and enclosure interpretation are illustrative. Screen art in a generated concept may differ slightly from the actual renderer; consult the separate screen captures for UI evidence.
