@@ -17,6 +17,10 @@ patterns = [
     re.compile(r'(?:/Users/|/home/)[A-Za-z0-9_.-]+/'),
     re.compile(r'\b(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}\b'),
 ]
+# Small regression checks: nonempty credentials are rejected; empty templates pass.
+assert patterns[0].search('#define ' + 'TODOIST_TOKEN "example-value"')
+assert not patterns[0].search('#define ' + 'TODOIST_TOKEN ""')
+assert patterns[5].search(':'.join(['aa'] * 6))
 errors=[]
 for rel in paths:
     if not rel: continue
