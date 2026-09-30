@@ -31,6 +31,12 @@ The repository is the development home for all three products. A folder is a mod
 
 Pomodoist operates independently from Cal. Calendar events do not shorten or prevent a focus session. The device helps keep chosen work visible; it does not decide whether a task fits your plan.
 
+| TrevOS launcher | Pomodoist | Cal |
+|---|---|---|
+| ![TrevOS ring launcher, simulator](design/screens/home.png) | ![Pomodoist synthetic writing task, simulator](design/screens/focus.png) | ![Cal synthetic calendar, simulator](design/screens/cal.png) |
+
+These are actual simulator renders with invented content, not photographs of a device.
+
 The first release retains the calendar model's **Asia/Bangkok / UTC+7 assumption**. It does not claim global timezone or daylight-saving support. Wi-Fi and integration credentials are configured at build time, not through a captive portal. Battery percentage and audio co-processor support are not part of this release.
 
 ## Build, preview and reuse
