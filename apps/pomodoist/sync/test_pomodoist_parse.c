@@ -1,11 +1,13 @@
 // test_pomodoist_parse.c — host test for the Todoist JSON parse rules. No ESP, no network.
 //
 // Build + run (cJSON comes from the IDF checkout; the sim shims supply esp_log.h):
-//   cc -std=c11 -Wall -Wextra -Werror -I apps/pomodoist/sync/include -I apps/pomodoist/core/include \
-//      -I sim/shims -I $IDF_PATH/components/json/cJSON \
-//      $IDF_PATH/components/json/cJSON/cJSON.c apps/pomodoist/sync/pomodoist_parse.c \
-//      apps/pomodoist/core/pomodoist_core.c apps/pomodoist/sync/test_pomodoist_parse.c \
-//      -o /tmp/parse_test && /tmp/parse_test
+/*
+ *   cc -std=c11 -Wall -Wextra -Werror -I apps/pomodoist/sync/include -I apps/pomodoist/core/include \
+ *      -I sim/shims -I $IDF_PATH/components/json/cJSON \
+ *      $IDF_PATH/components/json/cJSON/cJSON.c apps/pomodoist/sync/pomodoist_parse.c \
+ *      apps/pomodoist/core/pomodoist_core.c apps/pomodoist/sync/test_pomodoist_parse.c \
+ *      -o /tmp/parse_test && /tmp/parse_test
+ */
 #include "pomodoist_parse.h"
 #include <assert.h>
 #include <stdio.h>
