@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.tag }}
-      - run: python3 tools/bundle.py
+      - run: python3 tools/audit.py && python3 tools/bundle.py
       - env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag }}

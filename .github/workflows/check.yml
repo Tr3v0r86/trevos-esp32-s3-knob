@@ -10,7 +10,7 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y libsdl2-dev cmake
       - run: cmake -S sim -B sim/build -DSIM_TEST_FLAGS='-DTT_DEV_DEMO=1 -DTT_DEV_VIEW=1'
       - run: cmake --build sim/build -j2
-      - run: python3 tools/check.py && python3 tools/test_tools.py
+      - run: python3 tools/check.py && python3 tools/test_tools.py && python3 tools/audit.py
       - run: SIM_DISP=null SIM_TICKS=500 SIM_SHOT=/tmp/focus.ppm sim/build/pucksim </dev/null
       - run: python3 tools/bundle.py
   firmware:
