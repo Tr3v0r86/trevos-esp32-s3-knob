@@ -5,8 +5,6 @@ if(NOT DEFINED ENV{PUCK_NO_HAPTIC})
     set(PUCK_HAPTIC_DEF BSP_HAS_HAPTIC=1)
 endif()
 
-# PUCK_RELEASE=1 (env, own build dir: boards/puck/build-release) is the release image: no dev
-# screenshot stream (a full redraw and ~345 KB over USB every 12 s, printed from inside the flush).
 if(DEFINED ENV{PUCK_RELEASE})
     set(PUCK_SHOT_DEF BSP_NO_DEV_SHOT=1)
 else()

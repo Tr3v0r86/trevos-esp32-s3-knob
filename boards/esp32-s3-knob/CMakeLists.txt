@@ -1,10 +1,4 @@
 cmake_minimum_required(VERSION 3.16)
-# The puck reuses the shared TrevOS shell (os/) and the pomodoist and cal app-cores (apps/) as
-# IDF components, exactly like the 1.85B disk, and the shared boards/tdisplay-s3/main/main.c.
-# The board layer is the BSP (display here; wheel and haptics in later tasks), under main/.
-# Target esp32s3, set in sdkconfig.defaults.
-# TT_POMODOIST_ONLY means "no deskbuddy" (X7): the dashboard is not registered. It is set in
-# main/CMakeLists.txt, and deskbuddy is deliberately NOT a component here, so it is not on the chip.
 set(EXTRA_COMPONENT_DIRS
     "../../os"
     "../../apps/pomodoist/ui"
@@ -23,12 +17,7 @@ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 # the sim is shot with, so the device runs what was inspected (ADR-0012 point 4).
 idf_build_set_property(COMPILE_DEFINITIONS "TT_ROUND_DISPLAY=1" APPEND)
 idf_build_set_property(COMPILE_DEFINITIONS "TT_NO_LAYER_FX=1" APPEND)
-# E12 (ADR-0020): the puck's home is the ring, not the disk's pill pair. Build-wide because
-# trevos_home_ring.c / trevos_home_round.c are in the `trevos` component and main.c registers
-# Settings and the ring hooks under it; the disk and the CYD never set it.
 idf_build_set_property(COMPILE_DEFINITIONS "TT_HOME_RING=1" APPEND)
-# The puck's Cal is a glance face, one event per detent (face brief 3.6). Build-wide because
-# cal_faces.c is in the `cal_ui` component; the disk and the CYD never set it and keep the timeline.
 idf_build_set_property(COMPILE_DEFINITIONS "CAL_FACE_GLANCE=1" APPEND)
 
 # POMO_DESC_LEN is laid out in `core`, filled by `sync`, rendered by `main`: it must be one

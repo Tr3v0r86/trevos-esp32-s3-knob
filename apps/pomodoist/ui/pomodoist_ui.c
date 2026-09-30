@@ -33,15 +33,12 @@ static const char *TAG = "pomodoist";
 // (pomodoist_sync_set_write) because it gates the POST, never the outbox record.
 static uint32_t s_break_secs = POMO_BREAK_SECS;
 
-// PSRAM .bss on the disk (D18 grew the task list inside it to 21 KB and internal DRAM ran out for TLS and httpd); no-op elsewhere
 EXT_RAM_BSS_ATTR static pomo_core_t s_pc;
 // PV_LEDGER (C11) is round-only in practice: nothing reaches it without the swipe-down
 // gesture, which only the round build routes. The enum member is unconditional so the
 // rectangular boards compile the same switch.
 typedef enum { PV_FOCUS, PV_PICKER, PV_BREAK, PV_LEDGER } pomo_view_t;
 static pomo_view_t s_view;
-// C13: the break was entered by putting the disk face down, so lifting it undoes exactly
-// that and nothing else. A break reached any other way is not resumed by a face-up.
 static bool s_face_break;
 static bool s_setmode;   // focus set-mode (A3): editing the block length while idle
 static lv_obj_t *s_pomo_root;
@@ -233,11 +230,6 @@ void pomodoist_rail_update(lv_obj_t *l)
     // plain branch below, byte for byte.
     else if (trev_net_time_state() == TREV_TIME_RESTORED) snprintf(buf, sizeof buf, "~%02d:%02d", tm.tm_hour, tm.tm_min);
     else snprintf(buf, sizeof buf, "%02d:%02d", tm.tm_hour, tm.tm_min);
-    // B7: on the disk this label is not a clock, it is the device rail - the one line that
-    // says whether the day is being recorded and whether the thing is about to die. Both
-    // extra segments are OMITTED rather than zeroed: "0 pending" is noise on a day that is
-    // syncing normally, and a battery percent invented from a gauge that did not answer is
-    // worse than no percent at all.
     size_t k = strlen(buf);
     // Cached for 1s, for the same reason as the battery below and a sharper one: outbox_count
     // takes the outbox's recursive mutex, and outbox_pop_sent holds that mutex across NVS
@@ -486,13 +478,6 @@ static void pomo_render(void)
 }
 
 
-// ---- focus face, PUCK (pomo-focus.dc.html, pomo-focusrun.dc.html) -----------------------------
-// The approved puck face, a separate builder so the disk's build_focus_round below stays as it
-// shipped. The same objects serve idle, running and paused: pomo_render re-labels the pills, shows
-// the run dot only while running and the LENGTH readout only while idle, and drains the rim.
-// Rows are placed by their mocked centre (cy), top = cy - h/2, not by the canvas's top edge:
-// the Plex bitmaps' line heights differ from the CSS ones. Air: title 133 -> hero 160 (27),
-// hero 213 -> meta 237 (24).
 static void build_focus_puck(lv_obj_t *root)
 {
     const tt_skin_t *sk = tt_skin_paper();
@@ -582,24 +567,6 @@ static void build_focus_puck(lv_obj_t *root)
     tt_face_enter(root, p_time, rows, 3);
 }
 
-// ---- focus face, ROUND (01r) --------------------------------------------------------------
-// A separate builder, not a third branch inside build_focus. The rectangular path is left
-// byte-identical on purpose: the T3 and the CYD are both held boards, and a shape they do not
-// have is not worth risking their faces for.
-//
-// The idea: THE GLASS IS THE TIMER. A round panel hands you one piece of structure for free,
-// its rim, and the landscape face ignored it — the ring sat left at r=52 with text beside it
-// because that is what fits a 320x170. Letterboxed into a circle that composition covered 7.4%
-// of the glass and left ~110px dead above and ~200px below. Here the ring IS the face at
-// r=168, and the countdown sits at the optical centre at 72px, legible across a room.
-//
-// Reading order is top to bottom, and it is deliberately what/how-long/state:
-//   status bar . eyebrow . task title . HERO NUMERALS . phase . tags . action bar
-//
-// The description is deliberately absent. Every renderer write is null-guarded, so leaving
-// p_descbox/p_desc NULL simply skips it — no forked renderer. A 10px description on a round
-// face at desk distance is noise, and the fix for empty glass is bigger essentials, not more
-// small ones.
 
 
 static void build_focus(lv_obj_t *root) { build_focus_puck(root); }
@@ -756,18 +723,8 @@ static void build_picker(lv_obj_t *root) { build_picker_puck(root); }
 // corners at 188 and are clipped by the bezel; 20 puts them at 160 and clears it.
 #define BRK_SIDE_L 20
 #define BRK_SIDE_R 20
-// SKIP pill outline (design task 4 anatomy table). No trevos_theme.h token matches this
-// exact carbon-face hex, so it lives here next to this face's other raw literal (the
-// lofi slot background a few lines below, in the rectangular branch) - the one sanctioned
-// raw hex the root CLAUDE.md's design-system rule allows for this face.
 #define BRK_SKIP_LINE lv_color_hex(0x3A3830)
 
-// ---- break face, PUCK (pomo-break.dc.html) ------------------------------------------------------
-// The lofi scene stays on the disk. Here the countdown is the hero, in amber on carbon, with the rim
-// draining from full (pomo_render sets it from s_break_left) and one outlined SKIP pill: the lone
-// bar mode, so a tap anywhere in the bottom band skips. Rows are placed by their mocked centre (cy),
-// see build_focus_puck. DV5: the BREATHE dot is static, tt_anim_breathe is a scale transform and
-// no-ops under TT_NO_LAYER_FX (the puck sets it), so the call costs nothing and lifts with the flag.
 static void build_break_puck(lv_obj_t *root)
 {
     const tt_skin_t *sk = tt_skin_carbon();
@@ -825,11 +782,6 @@ static void build_break_puck(lv_obj_t *root)
     tt_face_enter(root, p_break_clock, rows, 2);
 }
 
-// ---- break face, ROUND (04r) --------------------------------------------------------------
-// Carbon and amber, palette unchanged. What changes is that the lo-fi scene stops being one
-// panel of a two-column layout and becomes the face: the centre is the only place a 150x154
-// rectangle fits a circle without the bezel eating its corners, and resting the eye is the
-// entire point of this face. The rim carries the countdown so the numerals can stay small.
 
 
 
@@ -890,9 +842,6 @@ static void build_ledger_round(lv_obj_t *root)
     const int ROW_H = 15, ROW_PITCH = ROW_H + 8;
 
     char head[48];
-    // The sync time, not the clock: this face's claim is "these are the pomos Todoist has
-    // heard about, as of then", and a rail clock reading 14:20 next to a 07:42 sync is the
-    // whole point - it says the day since then is still only on the disk.
     time_t ls = 0;
     struct tm lt;
     if (pomodoist_sync_last_sync(&ls)) {
@@ -1010,13 +959,6 @@ static void detail_close(void)
     p_detail = NULL;
 }
 
-// ---- detail card, PUCK (pomo-detail.dc.html) ----------------------------------------------------
-// A full-bleed card: 360x360 at (0,0), square, so the face beneath never shows at an edge and the
-// corners are the card's own colour (roundsafe's background test). It has its own rail and its own two
-// pills: BACK, and the verb the face underneath would fire (START, PAUSE or RESUME from focus, PICK from
-// the picker), so a COMMIT here closes the card and then acts as that verb (pomo_on_commit). Not
-// scrollable: the description is four lines then an ellipsis, the full text is the disk's card.
-// Rows are placed by their mocked centre (cy), see build_focus_puck.
 static void detail_open_puck(const pomo_task_t *t)
 {
     const tt_skin_t *sk = tt_skin_paper();
@@ -1124,9 +1066,6 @@ static void detail_open(const pomo_task_t *t)
     lv_obj_set_width(de, TEXT_W);
     lv_label_set_long_mode(de, LV_LABEL_LONG_WRAP);
 
-    // Documented no-op on this board: tt_anim_fade_in early-returns under TT_NO_LAYER_FX=1,
-    // which both the disk and roundsim set (STATE.md 1e). Called anyway so the card enters the
-    // same way every other element does the day that flag is lifted.
     tt_anim_fade_in(p_detail, 160, 0);
 }
 
@@ -1326,7 +1265,6 @@ static void pomo_on_tick(trev_app_t *a, uint32_t now)
     (void)a;
 #if !TT_DEV_DEMO
     if (s_view == PV_FOCUS) {
-        // PSRAM .bss on the disk (D18 grew this to 21 KB and internal DRAM ran out for TLS and httpd); no-op elsewhere
         EXT_RAM_BSS_ATTR static pomo_tasklist_t pushed;   // static: 9.7 KB at 120, 21.2 KB at 480 on the disk, off the LVGL task stack (single-threaded use)
         if (pomodoist_sync_take(&pushed)) { pomo_core_set_tasks(&s_pc, &pushed); pomo_persist_save(); }
     }
@@ -1347,8 +1285,6 @@ static void pomo_on_tick(trev_app_t *a, uint32_t now)
     phase_row_refresh();   // wall-clock row, so it tracks the clock and not the dirty flag
 }
 
-// C13/C16: the fourth semantic input (TrevOS API v2). Swipes navigate; the orientation
-// gestures are the disk's one physical affordance - turning it face down is how you stop.
 static void pomo_on_gesture(trev_app_t *a, trev_gesture_t g)
 {
     // D18: the card owns the swipes while it is open, so an up-swipe scrolls the text instead of
@@ -1516,7 +1452,6 @@ void pomodoist_ui_init(void)
 #if TT_DEV_DEMO   // force the demo task (has #tags + desc) for design-matching iteration
     seed_demo();
 #else
-    // PSRAM .bss on the disk (D18 grew this to 21 KB and internal DRAM ran out for TLS and httpd); no-op elsewhere
     EXT_RAM_BSS_ATTR static pomo_tasklist_t cached;   // static: 9.7 KB at POMO_DESC_LEN 120, 21.2 KB at 480 on the disk; on the main stack it overflows
     // D3: NO seed_demo() fallback here. It used to fire whenever the cache was empty OR the
     // fetch failed, so a device with no tasks presented a plausible, wrong, unchanging list

@@ -1,13 +1,4 @@
 #include "pomodoist_ui.h"
-// main.c — T-Display-S3 (landscape 320x170): BSP + LVGL + TrevOS, running pomodist.
-//
-// Renders the TrevOS design's FOCUS face (handoff "TrevOS - Pomodist on LilyGo"):
-// countdown ring + active task, Paper/Slate palette, bound to the live pomo_core +
-// todoist-sync. Landscape via panel MADCTL (swap_xy owned by esp_lvgl_port in disp_cfg
-// rotation; gap (0,35) in bsp_display.c — see those files for the rotation model).
-// Fonts are real Archivo (ExtraBold/SemiBold) + Space Mono Bold, generated to LVGL
-// bitmaps in main/fonts/. Sizes follow the .dc.html hierarchy, scaled up from the
-// literal ÷2 design values so the small text is legible at the device's true 1:1.
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -54,24 +45,9 @@
 #include "esp_netif.h"
 #include "esp_event.h"
 
-// Declared, not included. `#include "bsp_display.h"` FROM THIS FILE resolves to the
-// T-Display-S3's own header, because a quoted include searches the including file's directory
-// first - and this file lives in boards/tdisplay-s3/main/. No -I order a board sets can change
-// that, so the two round-only entry points below are simply invisible to the shared shell
-// unless it names them. Both are defined in boards/round-1-85b/main/bsp_display.c.
 esp_err_t bsp_backlight_set(uint8_t percent);
 
-// The page (papercolor) is the same story one level further: BSP_OWNS_LVGL_DISP replaces the
-// T-Display-S3's bsp_display_init/bsp_display_add_lvgl/bsp_display_backlight_on contract
-// wholesale instead of adding to it, and bsp_display_init does not even share a signature with
-// the one bsp_display.h declares (no io/panel out-params - the panel handle lives inside
-// boards/papercolor/main/bsp_display.c), so it cannot be declared alongside the old one
-// without a conflicting-types error. That is why the #include above is skipped for this
-// board: these three lines are the only declarations of these names its build ever sees.
 
-// Display-rotation seam: defaults ARE the T-Display-S3's (hardware-transposed landscape).
-// A board overrides via -D (compile def beats these #ifndef defaults). CYD passes all three
-// false for native 240x320 portrait. With nothing defined, the S3 build is byte-identical.
 #ifndef BSP_DISP_SWAP_XY
 #define BSP_DISP_SWAP_XY true
 #endif
@@ -92,21 +68,13 @@ esp_err_t bsp_backlight_set(uint8_t percent);
 #define BSP_WIFI_THIS_WAKE() 1   // every mains-powered board: always
 #endif
 
-static const char *TAG = "t3";
+static const char *TAG = "knob";
 
-// Portrait when the panel is taller than wide (CYD 240x320). Landscape boards (T3 320x170)
-// return false, so every face's landscape branch stays byte-identical. (resolution-aware, #13)
 
 
 #ifndef TT_DEV_DEMO
 #define TT_DEV_DEMO 0   // 1 = force demo tasks (tags+desc) for design iteration; 0 = live Todoist
 #endif
-// papersim only, and both exist to model the DEVICE rather than the sim's convenient ordering.
-// TT_DEV_DEMO_LATE=1 moves the Deskbuddy seed to AFTER trev_open, which is where real content
-// arrives on hardware: the face is built at trev_open with nothing bound, and the SHT40 read
-// and the Todoist drain land afterwards. TT_DEV_NO_AMBIENT=1 marks the seeded ambient reading
-// untrusted, which is ADR-0008's hide path. Two build-time content bugs survived twelve
-// reviews because no shot ever ran in either of these states.
 #ifndef TT_DEV_DEMO_LATE
 #define TT_DEV_DEMO_LATE 0
 #endif
@@ -114,10 +82,6 @@ static const char *TAG = "t3";
 #define TT_DEV_NO_AMBIENT 0
 #endif
 #ifndef TT_DEV_VIEW
-// 0 = normal (boot launcher); 1/2/3 = force pomodist focus/picker/break; 10 = the pomodoist
-// ledger; 11 = the calendar, 12 = the round home face (TT_CAL only: 0 boots the board's
-// TT_BOOT_APP there, so shoot.sh needs a number for home). A board may -D this to boot
-// straight into a face (CYD MVP = 1). The numbers 4..9 are unused (they were padlano faces).
 #define TT_DEV_VIEW 0
 #endif
 // Master gate for device->Todoist writes (Phase B). Default ON; set 0 for safe bring-up
@@ -126,14 +90,6 @@ static const char *TAG = "t3";
 #ifndef TT_TODOIST_WRITE
 #define TT_TODOIST_WRITE 1
 #endif
-// A board -D's this to 1 to make the Deskbuddy dashboard the home + boot face instead of the
-// app-tile launcher (the CYD does: a desk buddy rests on the dashboard, not on a tile grid).
-// The launcher stays registered and is one commit away from the dashboard's APPS cell.
-// A board -D's this to 1 to become a single-purpose Pomodoist appliance: Pomodoist is the
-// only registered app, the boot face and its own home. The CYD does — it is a desk focus
-// timer, not a pocket OS, and a launcher it can never usefully return to was the whole
-// "how do I get back?" problem. Supersedes TT_HOME_DASH on that board (deskbuddy is not
-// even linked there). The T3 keeps the launcher and leaves this 0.
 #ifndef TT_BOOT_APP
 #define TT_BOOT_APP 2   // registration index the TT_CAL set boots into: 2 = Cal (the disk), 1 =
                         // Pomodoist (the puck, UC1 B / D11). Home (0) is never a boot face.
@@ -143,20 +99,7 @@ static const char *TAG = "t3";
 #endif
 #ifndef TT_CAL_SERIAL
 #define TT_CAL_SERIAL 0 // 1 = no Wi-Fi at all; the laptop pushes the calendar over the console UART
-                        // (tools/push-cal.py) and sets the clock. The CYD's MVP transport.
 #endif
-// Input MODEL (which affordances to DRAW) as distinct from input PLUMBING (which driver to
-// init). They are the same thing on real boards, so this defaults to BSP_INPUT_TOUCH — but
-// cydsim drives the CYD's UI from a host pointer via sim_touch.c instead of bsp_touch.c, so
-// it must draw the tap-zone bar while still linking the button plumbing. Keeping one define
-// for both is why the sim spent this whole time rendering "KEY / BOOT" hints for a board
-// that has no buttons.
-// Is the durable outbox component linked? A board's CMake defines this to 1; the sims do
-// not, because they link a sync STUB and never compile the outbox at all. With it off the
-// day arithmetic simply counts nothing as done yet, which is the honest reading for a build
-// that has no completion log to consult.
-// Included here, below the gate, not up with the other headers: the gate has an in-file
-// default, so an include tested above it would silently miss a define made in this file.
 #include "pomodoist_outbox.h"   // today's completions, offline-safe (C12's DONE estimate)
 #if TT_CAL && defined(BSP_HAS_HAPTIC)
 // Y5: the calendar chime on a board with no speaker is a thunk plus a flash. The backlight goes to
@@ -602,8 +545,6 @@ void app_main(void)
         trev_app_register(&TREV_HOME_ROUND);   // 0 - home face (round)
         trev_app_register(&POMODOIST_APP);          // 1
         trev_app_register(&CAL_APP);           // 2 - Cal (boot face unless TT_BOOT_APP says otherwise)
-        // Issue #88 (round-1-85b: flip the disk to the ring home after a disk session) is the moment
-        // the disk registers this: its rows are compiled and bound (settings_init) but no home reaches the face yet.
         trev_app_register(&TREV_SETTINGS);     // 3 - Settings, pinned to 6 o'clock by the ring (D5)
 #if TT_DEV_RING_FILL > 3
         for (int i = 0; i < TT_DEV_RING_FILL - 3 && i < (int)(sizeof RING_FILL / sizeof RING_FILL[0]); i++) {
@@ -678,8 +619,6 @@ void app_main(void)
         trev_net_start(NETS, sizeof NETS / sizeof NETS[0]);
     }
 
-    // Report the ACTUAL geometry, not a hardcoded string — this line read "landscape 320x170"
-    // on the CYD's 240x320 portrait panel, which actively misleads log-based debugging.
     ESP_LOGI(TAG, "TrevOS up: %dx%d", BSP_LCD_H_RES, BSP_LCD_V_RES);
 
 }
