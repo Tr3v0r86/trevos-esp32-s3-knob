@@ -20,6 +20,14 @@ cc -std=c99 -Iapps/cal/cal_core -I"$CJSON_DIR" examples/cal-model.c apps/cal/cal
 
 Pomodoist's `core`, `sync`, `ui` components plus `os/trevos` and `os/trev_net` form the full app. Add their paths to your IDF project's `EXTRA_COMPONENT_DIRS`; provide LVGL 9.5.0 and esp_lvgl_port 2.8.x. The initial UI is designed for 360×360 round screens with a wheel and touch input. It is not a responsive layout for arbitrary displays.
 
+Use the same build-wide definitions across the app and its dependencies (before `project()`), so task structs and UI geometry agree:
+
+```cmake
+idf_build_set_property(COMPILE_DEFINITIONS
+ "TT_ROUND_DISPLAY=1;TT_HOME_RING=1;TT_NO_LAYER_FX=1;TT_HAS_OUTBOX=1;TT_TOUCH_UI=1;BSP_HAS_WHEEL=1;POMO_DESC_LEN=480"
+ APPEND)
+```
+
 After NVS/network/display setup, call `pomodoist_ui_init()`. Under the LVGL lock, call `trev_init(lv_screen_active())`, register `POMODOIST_APP`, set/open your chosen home index, then call `pomodoist_ui_start()` once. Initialize sync before starting `trev_net`. The complete board main demonstrates the ordering. `pomodoist_countdown_critical()` allows your BSP to avoid dimming during the last minute.
 
 Cal's `cal_core`, `cal_sync`, `cal_ui` use the TrevOS shell and ESP-IDF network/NVS services. Call `cal_sync_start_google()` with your own credentials, then register `CAL_APP`. Provide the time-trust callbacks before starting sync. It is read-only; the initial Google adapter is limited to UTC+7.
