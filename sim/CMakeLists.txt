@@ -62,4 +62,4 @@ target_compile_definitions(pucksim PRIVATE app_main=board_app_main LV_LVGL_H_INC
  TT_POMODOIST_ONLY=1 TT_CAL=1 CYDSIM=1 TT_ROUND_DISPLAY=1 TT_HOME_RING=1
  CAL_FACE_GLANCE=1 TT_NO_LAYER_FX=1 POMO_DESC_LEN=480 TT_HAS_OUTBOX=1
  TT_BOOT_APP=1 BSP_HAS_BACKLIGHT_DIM=1 BSP_CLOCK_NVS=1 BSP_HAS_WHEEL=1 BSP_HAS_HAPTIC=1 SIM_WHEEL=1)
-target_link_libraries(pucksim lvgl SDL2::SDL2 pthread)
+target_link_libraries(pucksim lvgl SDL2::SDL2 pthread m)
